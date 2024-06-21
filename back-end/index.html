@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>教育平台</title>
+    <script src="https://cdn.jsdelivr.net/npm/web3@latest/dist/web3.min.js"></script>
+</head>
+<body>
+    <h1>教育平台</h1>
+    <button id="connectWallet">連接MetaMask</button>
+
+    <script>
+        let web3;
+        let userAddress;
+        const contractAddress = '0xEb25c4cc07a812D13ad6DccA120B7f35092adFbc'; // 确保这是正确的合约地址
+        const contractABI =[
+	{
+		"inputs": [],
+		"name": "addUser",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": true,
+				"internalType": "address",
+				"name": "userAddress",
+				"type": "address"
+			}
+		],
+		"name": "UserAdded",
+		"type": "event"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "_userAddress",
+				"type": "address"
+			}
+		],
+		"name": "getUser",
+		"outputs": [
+			{
+				"internalType": "address",
+				"name": "",
+				"type": "address"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "_user",
+				"type": "address"
+			}
+		],
+		"name": "isWhitelisted",
+		"outputs": [
+			{
+				"internalType": "bool",
+				"name": "",
+				"type": "bool"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "",
+				"type": "address"
+			}
+		],
+		"name": "users",
+		"outputs": [
+			{
+				"internalType": "address",
+				"name": "walletAddress",
+				"type": "address"
+			},
+			{
+				"internalType": "bool",
+				"name": "exists",
+				"type": "bool"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	}
+]
+	
+		;
+
+        const correctNetworkId = '11155111'; // 這裡填寫您智能合約部署的網絡ID，4是Rinkeby測試網的ID
+
+        // 連接MetaMask錢包並檢查餘額
+        async function connectMetaMask() {
+            console.log('嘗試連接MetaMask...');
+            if (window.ethereum) {
+                web3 = new Web3(window.ethereum);
+                try {
+                    console.log('請求賬戶訪問...');
+                    await window.ethereum.request({ method: 'eth_requestAccounts' });
+                    const accounts = await web3.eth.getAccounts();
+                    userAddress = accounts[0];
+                    console.log('連接地址:', userAddress);
+
+                    const networkId = await web3.eth.net.getId();
+                    console.log('連接網絡ID:', networkId);
+
+                    if (networkId != correctNetworkId) {
+                        alert('請連接到正確的網絡。');
+                        return;
+                    }
+
+                    const balance = await web3.eth.getBalance(userAddress);
+                    const balanceInEth = web3.utils.fromWei(balance, 'ether');
+                    console.log('用戶餘額:', balanceInEth, 'ETH');
+
+                    if (parseFloat(balanceInEth) < 0.01) { // 設定一個最低餘額阈值
+                        alert('您的账户余额不足，请确保您的账户中有足够的ETH以支付交易费用。');
+                        return;
+                    }
+
+                    contract = new web3.eth.Contract(contractABI, contractAddress);
+                    console.log('智能合約已初始化');
+                    await addUserToWhitelist(); // 將地址添加到白名單
+                } catch (error) {
+                    console.error('用戶拒絕賬戶訪問或出錯', error);
+                }
+            } else {
+                alert('檢測到非以太坊瀏覽器。您應該考慮嘗試使用MetaMask!');
+            }
+        }
+
+        // 將用戶地址添加到白名單
+        async function addUserToWhitelist() {
+            try {
+                console.log('檢查是否在白名單中...');
+                const isWhitelisted = await contract.methods.isWhitelisted(userAddress).call();
+                console.log('白名單狀態:', isWhitelisted);
+                if (!isWhitelisted) {
+                    console.log('用戶不在白名單中，正在添加...');
+                    await contract.methods.addUser().send({ from: userAddress });
+                    console.log('用戶已添加到白名單');
+                } else {
+                    console.log('用戶已在白名單中');
+                }
+            } catch (error) {
+                console.error('檢查白名單或添加用戶時出錯', error);
+                alert('檢查白名單或添加用戶時出錯，請確認合約地址和ABI是否正確');
+            }
+        }
+
+        // 綁定按鈕事件
+        document.getElementById('connectWallet').addEventListener('click', connectMetaMask);
+    </script>
+</body>
+</html>
