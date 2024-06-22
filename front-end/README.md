@@ -1,4 +1,6 @@
-## XueDAO frontend workshop
+## front-end template
+
+using XueDAO workshop template
 
 First, run the development server:
 
